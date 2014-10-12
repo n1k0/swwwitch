@@ -80,6 +80,9 @@ var store = (function() {
           return {type: CELL_DONE};
         return aCell;
       }));
+    },
+    checkWon: function() {
+      return _findOffIndexes().length === 0;
     }
   };
 })();
@@ -172,7 +175,7 @@ var StartButton = React.createClass({
 
 var Grid = React.createClass({
   getDefaultProps: function() {
-    return {size: 8};
+    return {size: 3};
   },
   getInitialState: function() {
     return {cells: []};
@@ -200,10 +203,12 @@ var Grid = React.createClass({
   },
   activateNewCell: function() {
     if (!store.activateNewCell())
-      return this.props.winGame();
+      return this.winGame();
   },
   onCellTapped: function(cell) {
     this.props.incrementScore();
+    if (store.checkWon())
+      return this.winGame();
     store.switchCellTo(cell, CELL_WAIT);
   },
   onCellTimeout: function(cell) {
@@ -218,6 +223,11 @@ var Grid = React.createClass({
     clearInterval(this._addCellTimer);
     store.freezeCells();
     this.props.gameOver();
+  },
+  winGame: function() {
+    clearInterval(this._addCellTimer);
+    store.freezeCells();
+    this.props.winGame();
   },
   _getCellComponent: function(cell, key) {
     switch(cell.type) {
@@ -305,7 +315,8 @@ var Game = React.createClass({
       <div className="game">
         <h1>Swwwitch</h1>
         <h2>Score: {this.state.score} — Best: {this.state.best}</h2>
-        <Grid incrementScore={this.incrementScore}
+        <Grid size={this.props.size}
+              incrementScore={this.incrementScore}
               gameState={this.state.gameState}
               winGame={this.winGame}
               gameOver={this.gameOver} />
@@ -315,4 +326,4 @@ var Game = React.createClass({
   }
 });
 
-React.renderComponent(<Game size="8"/>, document.body);
+React.renderComponent(<Game size="8" />, document.body);
