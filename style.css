@@ -1,0 +1,67 @@
+* {
+  font-family: Helvetica, Arial, sans-serif;
+  color: #444
+}
+.game {
+  width: 500px;
+  margin: 0 auto;
+  text-align: center;
+}
+button {
+  background: #0a0;
+  color: #fff;
+  border: 0;
+  border-radius: 4px;
+  padding: 1em 2em;
+  font-size: 1em;
+  cursor: pointer;
+}
+button:hover {
+  background: #0b0;
+}
+.grid {
+  line-height: 10px;
+}
+.cell {
+  display: inline-block;
+  width: 48px;
+  height: 44px;
+  background: lightgrey;
+  text-align: center;
+  margin: 4px;
+  padding-top: 4px;
+  border-radius: 2px;
+  overflow: hidden;
+  line-height: 20px;
+
+}
+.cell p {
+  margin: 0;
+  padding: 0;
+  color: #fff;
+}
+.cell.wait {
+  background: red;
+}
+.cell.tap {
+  background: green;
+  cursor: pointer;
+}
+.cell.dead {
+  background: orange;
+}
+.cell.done {
+  background: lightblue;
+}
+.cell a {
+  text-decoration: none;
+}
+.overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: rgba(255,255,255,.3);
+  padding-top: 14.3em
+}
