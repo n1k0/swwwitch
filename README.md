@@ -1,7 +1,7 @@
 Swwwitch
 ========
 
-Swwwitch is a Web version of [Switch](https://play.google.com/store/apps/details?id=com.monkeymoon.switch). It's playable online [here](http://n1k0.github.io/swiiitch).
+Swwwitch is a Web version of [Switch](https://play.google.com/store/apps/details?id=com.monkeymoon.switch). It's playable online [here](http://n1k0.github.io/swwwitch).
 
 ![](swwwitch.gif)
 
