@@ -25,9 +25,12 @@ button:hover {
 .grid {
   line-height: 0px;
   font-size: 0px;
+  margin: 0 auto;
 }
 .cell {
-  display: inline-block;
+  position: relative;
+  display: block;
+  float: left;
   background: #fff;
   text-align: center;
   -webkit-user-select: none;
@@ -36,16 +39,20 @@ button:hover {
   user-select: none;
 }
 .cell .inner {
-  overflow: hidden;
+  position: absolute;
+  top: 0;
+  left: 0;
+  bottom: 0;
+  right: 0;
   background: lightgrey;
-  height: 100%;
-  margin: 8px 4px;
   border-radius: 2px;
+  margin: .2vw .2vw;
 }
 .cell .inner p {
   margin: 0;
   padding: 0;
   color: #fff;
+  box-shadow: 0 0 30px 10px rgba(243, 215, 116, 0), inset 0 0 0 1px rgba(255, 255, 255, 0);
 }
 .cell.wait .inner {
   background: red;

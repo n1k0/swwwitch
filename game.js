@@ -129,10 +129,9 @@ var Cell = React.createClass({displayName: 'Cell',
     }
   },
   _getStyle: function() {
-    // don't ask about these computations. just don't.
     return {
       width: this.props.size,
-      height: this.props.size - (this.props.size / 12),
+      height: this.props.size,
       fontSize: Math.round(this.props.size / 4) + "px",
       lineHeight: Math.round(this.props.size / 2.2) + "px",
     };
