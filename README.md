@@ -16,6 +16,6 @@ $ make watch
 License
 -------
 
-Original game idea & design is © 2104 [Laurent Victorino](http://lvictorino.com/).
+Original game idea & design is © 2014 [Laurent Victorino](http://lvictorino.com/).
 
 This very source code is licensed under the terms of the [WTFPL](http://www.wtfpl.net/).
