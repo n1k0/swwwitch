@@ -2,8 +2,11 @@
   font-family: Helvetica, Arial, sans-serif;
   color: #444
 }
+body {
+  margin: 0;
+  padding: 0;
+}
 .game {
-  width: 500px;
   margin: 0 auto;
   text-align: center;
 }
@@ -20,45 +23,45 @@ button:hover {
   background: #0b0;
 }
 .grid {
-  line-height: 10px;
+  line-height: 0px;
+  font-size: 0px;
 }
 .cell {
   display: inline-block;
-  width: 48px;
-  height: 44px;
-  background: lightgrey;
+  background: #fff;
   text-align: center;
-  margin: 4px;
-  padding-top: 4px;
-  border-radius: 2px;
-  overflow: hidden;
-  line-height: 20px;
-
-}
-.cell p {
-  margin: 0;
-  padding: 0;
-  color: #fff;
-}
-.cell.wait {
-  background: red;
   -webkit-user-select: none;
   -moz-user-select: none;
   -ms-user-select: none;
   user-select: none;
+}
+.cell .inner {
+  overflow: hidden;
+  background: lightgrey;
+  height: 100%;
+  margin: 8px 4px;
+  border-radius: 2px;
+}
+.cell .inner p {
+  margin: 0;
+  padding: 0;
+  color: #fff;
+}
+.cell.wait .inner {
+  background: red;
   cursor: default;
 }
-.cell.tap {
+.cell.tap .inner {
   background: green;
   cursor: pointer;
 }
-.cell.dead {
+.cell.dead .inner {
   background: orange;
 }
-.cell.done {
+.cell.done .inner {
   background: lightblue;
 }
-.cell a {
+.cell .inner a {
   text-decoration: none;
 }
 .overlay {

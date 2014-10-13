@@ -11,6 +11,12 @@ var CELL_TAP = "tap";
 var CELL_DONE = "done";
 var CELL_DEAD = "dead";
 
+function getAvailableWindowSize() {
+  var availHeight = window.innerHeight - 200; // ~ title height… FIXME.
+  return window.innerWidth > availHeight ?
+         availHeight : window.innerWidth;
+}
+
 function range(n) {
   return Array.apply(0, Array(n)).map(function (_, i) {
     return i;
@@ -56,8 +62,8 @@ var store = (function() {
         return aListener !== listener;
       });
     },
-    initCells: function(size) {
-      _setCells(range(size * size).map(function() {
+    initCells: function(numberOfCells) {
+      _setCells(range(numberOfCells).map(function() {
         return {type: "off"};
       }));
     },
@@ -113,20 +119,35 @@ var TimerMixin = {
 };
 
 var Cell = React.createClass({displayName: 'Cell',
+  getDefaultProps: function() {
+    return {size: 48};
+  },
   handleClick: function(event) {
     event.preventDefault();
     if (this.props.onClick) {
       this.props.onClick(this.props.cell);
     }
   },
+  _getStyle: function() {
+    // don't ask about these computations. just don't.
+    return {
+      width: this.props.size,
+      height: this.props.size - (this.props.size / 12),
+      fontSize: Math.round(this.props.size / 4) + "px",
+      lineHeight: Math.round(this.props.size / 2.2) + "px",
+    };
+  },
   render: function() {
     var classes = {cell: true};
     classes[this.props.cell.type || "off"] = true;
     return (
       React.DOM.div({className: React.addons.classSet(classes), 
-           onClick: this.handleClick}, 
-        this.props.label ? React.DOM.p(null, this.props.label) : null, 
-        this.props.countdown ? React.DOM.p(null, this.props.countdown) : null
+           onClick: this.handleClick, 
+           style: this._getStyle()}, 
+        React.DOM.div({className: "inner"}, 
+          this.props.label ? React.DOM.p(null, this.props.label) : null, 
+          this.props.countdown ? React.DOM.p(null, this.props.countdown) : null
+        )
       )
     );
   }
@@ -137,6 +158,7 @@ var WaitCell = React.createClass({displayName: 'WaitCell',
   render: function() {
     return Cell({
       cell: this.props.cell, 
+      size: this.props.size, 
       label: "WAIT", 
       countdown: this.state.countdown}
     );
@@ -148,6 +170,7 @@ var TapCell = React.createClass({displayName: 'TapCell',
   render: function() {
     return Cell({
       cell: this.props.cell, 
+      size: this.props.size, 
       label: "TAP", 
       onClick: this.props.onTapped, 
       countdown: this.state.countdown}
@@ -175,14 +198,14 @@ var StartButton = React.createClass({displayName: 'StartButton',
 
 var Grid = React.createClass({displayName: 'Grid',
   getDefaultProps: function() {
-    return {size: 3};
+    return {numberOfCells: 4};
   },
   getInitialState: function() {
     return {cells: []};
   },
   componentDidMount: function() {
     store.addChangeListener(this.onStoreChanged);
-    store.initCells(parseInt(this.props.size, 10));
+    store.initCells(this.props.numberOfCells);
   },
   componentWillUnmount: function() {
     store.removeChangeListener(this.onStoreChanged);
@@ -197,7 +220,7 @@ var Grid = React.createClass({displayName: 'Grid',
     }
   },
   initiateGrid: function() {
-    store.initCells(parseInt(this.props.size, 10));
+    store.initCells(this.props.numberOfCells);
     this._addCellTimer = setInterval(this.activateNewCell, ADD_CELL_INTERVAL_SECONDS * 1000);
     this.activateNewCell();
   },
@@ -230,11 +253,13 @@ var Grid = React.createClass({displayName: 'Grid',
     this.props.winGame();
   },
   _getCellComponent: function(cell, key) {
+    var cellSize = Math.floor(getAvailableWindowSize() / Math.sqrt(this.props.numberOfCells));
     switch(cell.type) {
       case CELL_WAIT: {
         return WaitCell({
           key: key, 
           cell: cell, 
+          size: cellSize, 
           countdown: WAIT_CELL_TIMEOUT_SECONDS, 
           onTimeout: this.onCellTimeout}
         );
@@ -243,19 +268,26 @@ var Grid = React.createClass({displayName: 'Grid',
         return TapCell({
           key: key, 
           cell: cell, 
+          size: cellSize, 
           countdown: TAP_CELL_TIMEOUT_SECONDS, 
           onTimeout: this.onCellTimeout, 
           onTapped: this.onCellTapped}
         );
       }
       default: {
-        return Cell({key: key, cell: cell});
+        return Cell({key: key, cell: cell, size: cellSize});
       }
     }
   },
+  _getStyle: function() {
+    return {
+      width: getAvailableWindowSize(),
+      margin: "0 auto"
+    };
+  },
   render: function() {
     return (
-      React.DOM.div({className: "grid"}, 
+      React.DOM.div({className: "grid", style: this._getStyle()}, 
         this.state.cells.map(function(cell, i) {
           return this._getCellComponent(cell, i);
         }, this)
@@ -277,16 +309,21 @@ var Game = React.createClass({displayName: 'Game',
   },
   incrementScore: function() {
     var newScore = this.state.score + 1;
-    var best = this.state.best;
-    if (newScore > best)
-       best = localStorage["swwwitch.best"] = newScore;
-    this.setState({score: newScore, best: best});
+    this.setState({score: newScore, best: this._computeBest(newScore)});
   },
   winGame: function() {
     this.setState({gameState: "win"});
   },
   gameOver: function() {
     this.setState({gameState: "over"});
+  },
+  _computeBest: function(score) {
+    var best = this.state.best;
+    if (score > best) {
+      localStorage["swwwitch.best"] = score;
+      return score;
+    }
+    return best;
   },
   _renderOverlay: function() {
     switch (this.state.gameState) {
@@ -315,7 +352,7 @@ var Game = React.createClass({displayName: 'Game',
       React.DOM.div({className: "game"}, 
         React.DOM.h1(null, "Swwwitch"), 
         React.DOM.h2(null, "Score: ", this.state.score, " — Best: ", this.state.best), 
-        Grid({size: this.props.size, 
+        Grid({numberOfCells: 64, 
               incrementScore: this.incrementScore, 
               gameState: this.state.gameState, 
               winGame: this.winGame, 
@@ -326,4 +363,4 @@ var Game = React.createClass({displayName: 'Game',
   }
 });
 
-React.renderComponent(Game({size: "8"}), document.body);
+React.renderComponent(Game(null), document.body);
