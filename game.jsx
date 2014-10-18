@@ -31,10 +31,10 @@ function replaceAt(list, index, value) {
   // hint: splice sucks balls.
   var start = slice(list, 0, index);
   var end = slice(list, index + 1, list.length);
-  return start.concat({type: CELL_WAIT}, end);
+  return start.concat(value, end);
 }
 
-var store = (function() {
+var gameData = (function() {
   var _cells = [], _changeListeners = [];
 
   function _findOffIndexes() {
@@ -203,15 +203,15 @@ var Grid = React.createClass({
     return {cells: []};
   },
   componentDidMount: function() {
-    store.addChangeListener(this.onStoreChanged);
-    store.initCells(this.props.numberOfCells);
+    gameData.addChangeListener(this.onStoreChanged);
+    gameData.initCells(this.props.numberOfCells);
   },
   componentWillUnmount: function() {
-    store.removeChangeListener(this.onStoreChanged);
+    gameData.removeChangeListener(this.onStoreChanged);
     clearInterval(this._addCellTimer);
   },
   onStoreChanged: function() {
-    this.setState({cells: store.getCells()});
+    this.setState({cells: gameData.getCells()});
   },
   componentWillReceiveProps: function(nextProps) {
     if (this.props.gameState !== "ongoing" && nextProps.gameState === "ongoing") {
@@ -219,36 +219,36 @@ var Grid = React.createClass({
     }
   },
   initiateGrid: function() {
-    store.initCells(this.props.numberOfCells);
+    gameData.initCells(this.props.numberOfCells);
     this._addCellTimer = setInterval(this.activateNewCell, ADD_CELL_INTERVAL_SECONDS * 1000);
     this.activateNewCell();
   },
   activateNewCell: function() {
-    if (!store.activateNewCell())
+    if (!gameData.activateNewCell())
       return this.winGame();
   },
   onCellTapped: function(cell) {
     this.props.incrementScore();
-    if (store.checkWon())
+    if (gameData.checkWon())
       return this.winGame();
-    store.switchCellTo(cell, CELL_WAIT);
+    gameData.switchCellTo(cell, CELL_WAIT);
   },
   onCellTimeout: function(cell) {
     if (cell.type === CELL_TAP) {
-      store.switchCellTo(cell, CELL_DEAD);
+      gameData.switchCellTo(cell, CELL_DEAD);
       this.gameOver(cell);
     } else {
-      store.switchCellTo(cell, CELL_TAP);
+      gameData.switchCellTo(cell, CELL_TAP);
     }
   },
   gameOver: function(failedCell) {
     clearInterval(this._addCellTimer);
-    store.freezeCells();
+    gameData.freezeCells();
     this.props.gameOver();
   },
   winGame: function() {
     clearInterval(this._addCellTimer);
-    store.freezeCells();
+    gameData.freezeCells();
     this.props.winGame();
   },
   _getCellComponent: function(cell, key) {
