@@ -3,6 +3,7 @@
  * TODO
  * - RWD
  */
+var MAX_LEVEL = 9;
 var ADD_CELL_INTERVAL_SECONDS = 6;
 var WAIT_CELL_TIMEOUT_SECONDS = 5;
 var TAP_CELL_TIMEOUT_SECONDS = 3;
@@ -87,7 +88,7 @@ var gameData = (function() {
         return aCell;
       }));
     },
-    checkWon: function() {
+    checkGridComplete: function() {
       return _findOffIndexes().length === 0;
     }
   };
@@ -183,28 +184,36 @@ var Overlay = React.createClass({
       <div className="overlay">
         <h1>{this.props.title}</h1>
         {this.props.children}
-        <StartButton onClick={this.props.onButtonClick} />
+        <StartButton label={this.props.buttonLabel}
+                     onClick={this.props.onButtonClick} />
       </div>
     );
   }
 });
 
 var StartButton = React.createClass({
+  getDefaultProps: function() {
+    return {label: "Start new game"};
+  },
   render: function() {
-    return <p><button onClick={this.props.onClick}>Start new game</button></p>;
+    return (
+      <p>
+        <button onClick={this.props.onClick}>{this.props.label}</button>
+      </p>
+    );
   }
 });
 
 var Grid = React.createClass({
   getDefaultProps: function() {
-    return {numberOfCells: 4};
+    return {level: 1};
   },
   getInitialState: function() {
-    return {cells: []};
+    return {level: this.props.level, cells: []};
   },
   componentDidMount: function() {
     gameData.addChangeListener(this.onStoreChanged);
-    gameData.initCells(this.props.numberOfCells);
+    gameData.initCells(this._getNumberOfCells());
   },
   componentWillUnmount: function() {
     gameData.removeChangeListener(this.onStoreChanged);
@@ -215,22 +224,26 @@ var Grid = React.createClass({
   },
   componentWillReceiveProps: function(nextProps) {
     if (this.props.gameState !== "ongoing" && nextProps.gameState === "ongoing") {
-      this.initiateGrid();
+      this.setState({level: nextProps.level}, this.initiateGrid);
     }
   },
+  _getNumberOfCells: function() {
+    var size = this.props.level + 1;
+    return size * size;
+  },
   initiateGrid: function() {
-    gameData.initCells(this.props.numberOfCells);
+    gameData.initCells(this._getNumberOfCells());
     this._addCellTimer = setInterval(this.activateNewCell, ADD_CELL_INTERVAL_SECONDS * 1000);
     this.activateNewCell();
   },
   activateNewCell: function() {
     if (!gameData.activateNewCell())
-      return this.winGame();
+      return this.nextLevel();
   },
   onCellTapped: function(cell) {
     this.props.incrementScore();
-    if (gameData.checkWon())
-      return this.winGame();
+    if (gameData.checkGridComplete())
+      return this.nextLevel();
     gameData.switchCellTo(cell, CELL_WAIT);
   },
   onCellTimeout: function(cell) {
@@ -246,13 +259,13 @@ var Grid = React.createClass({
     gameData.freezeCells();
     this.props.gameOver();
   },
-  winGame: function() {
+  nextLevel: function() {
     clearInterval(this._addCellTimer);
     gameData.freezeCells();
-    this.props.winGame();
+    this.props.nextLevel();
   },
   _getCellComponent: function(cell, key) {
-    var cellSize = Math.floor(getAvailableWindowSize() / Math.sqrt(this.props.numberOfCells));
+    var cellSize = Math.floor(getAvailableWindowSize() / Math.sqrt(this._getNumberOfCells()));
     switch(cell.type) {
       case CELL_WAIT: {
         return <WaitCell
@@ -296,15 +309,36 @@ var Grid = React.createClass({
 });
 
 var Game = React.createClass({
+  getDefaultProps: function() {
+    return {level: 1};
+  },
   getInitialState: function() {
     return {
       gameState: "init",
+      level: this.props.level,
       score: 0,
       best: localStorage["swwwitch.best"] || 0
     };
   },
   startGame: function() {
-    this.setState({gameState: "ongoing", score: 0});
+    this.setState({
+      gameState: "ongoing",
+      level: 1,
+      score: 0
+    });
+  },
+  startNextLevel: function() {
+    var nextLevel = this.state.level + 1;
+    if (nextLevel > MAX_LEVEL) {
+      return this.winGame();
+    }
+    this.setState({
+      gameState: "ongoing",
+      level: nextLevel
+    });
+  },
+  nextLevel: function() {
+    this.setState({gameState: "levelup"});
   },
   incrementScore: function() {
     var newScore = this.state.score + 1;
@@ -335,6 +369,15 @@ var Game = React.createClass({
           </Overlay>
         );
       }
+      case "levelup": {
+        return (
+          <Overlay title={"Level " + this.state.level + " completed!"}
+                   buttonLabel="Start next level"
+                   onButtonClick={this.startNextLevel}>
+            <p>Get ready!</p>
+          </Overlay>
+        );
+      }
       case "over":
       case "win": {
         return <Overlay
@@ -350,11 +393,11 @@ var Game = React.createClass({
     return (
       <div className="game">
         <h1>Swwwitch</h1>
-        <h2>Score: {this.state.score} — Best: {this.state.best}</h2>
-        <Grid numberOfCells={64}
+        <h2>Level: {this.state.level} — Score: {this.state.score} — Best: {this.state.best}</h2>
+        <Grid level={this.state.level}
               incrementScore={this.incrementScore}
               gameState={this.state.gameState}
-              winGame={this.winGame}
+              nextLevel={this.nextLevel}
               gameOver={this.gameOver} />
         {this._renderOverlay()}
       </div>

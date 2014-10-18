@@ -3,6 +3,7 @@
  * TODO
  * - RWD
  */
+var MAX_LEVEL = 9;
 var ADD_CELL_INTERVAL_SECONDS = 6;
 var WAIT_CELL_TIMEOUT_SECONDS = 5;
 var TAP_CELL_TIMEOUT_SECONDS = 3;
@@ -31,10 +32,10 @@ function replaceAt(list, index, value) {
   // hint: splice sucks balls.
   var start = slice(list, 0, index);
   var end = slice(list, index + 1, list.length);
-  return start.concat({type: CELL_WAIT}, end);
+  return start.concat(value, end);
 }
 
-var store = (function() {
+var gameData = (function() {
   var _cells = [], _changeListeners = [];
 
   function _findOffIndexes() {
@@ -87,7 +88,7 @@ var store = (function() {
         return aCell;
       }));
     },
-    checkWon: function() {
+    checkGridComplete: function() {
       return _findOffIndexes().length === 0;
     }
   };
@@ -183,76 +184,88 @@ var Overlay = React.createClass({displayName: 'Overlay',
       React.DOM.div({className: "overlay"}, 
         React.DOM.h1(null, this.props.title), 
         this.props.children, 
-        StartButton({onClick: this.props.onButtonClick})
+        StartButton({label: this.props.buttonLabel, 
+                     onClick: this.props.onButtonClick})
       )
     );
   }
 });
 
 var StartButton = React.createClass({displayName: 'StartButton',
+  getDefaultProps: function() {
+    return {label: "Start new game"};
+  },
   render: function() {
-    return React.DOM.p(null, React.DOM.button({onClick: this.props.onClick}, "Start new game"));
+    return (
+      React.DOM.p(null, 
+        React.DOM.button({onClick: this.props.onClick}, this.props.label)
+      )
+    );
   }
 });
 
 var Grid = React.createClass({displayName: 'Grid',
   getDefaultProps: function() {
-    return {numberOfCells: 4};
+    return {level: 1};
   },
   getInitialState: function() {
-    return {cells: []};
+    return {level: this.props.level, cells: []};
   },
   componentDidMount: function() {
-    store.addChangeListener(this.onStoreChanged);
-    store.initCells(this.props.numberOfCells);
+    gameData.addChangeListener(this.onStoreChanged);
+    gameData.initCells(this._getNumberOfCells());
   },
   componentWillUnmount: function() {
-    store.removeChangeListener(this.onStoreChanged);
+    gameData.removeChangeListener(this.onStoreChanged);
     clearInterval(this._addCellTimer);
   },
   onStoreChanged: function() {
-    this.setState({cells: store.getCells()});
+    this.setState({cells: gameData.getCells()});
   },
   componentWillReceiveProps: function(nextProps) {
     if (this.props.gameState !== "ongoing" && nextProps.gameState === "ongoing") {
-      this.initiateGrid();
+      this.setState({level: nextProps.level}, this.initiateGrid);
     }
   },
+  _getNumberOfCells: function() {
+    var size = this.props.level + 1;
+    return size * size;
+  },
   initiateGrid: function() {
-    store.initCells(this.props.numberOfCells);
+    gameData.initCells(this._getNumberOfCells());
     this._addCellTimer = setInterval(this.activateNewCell, ADD_CELL_INTERVAL_SECONDS * 1000);
     this.activateNewCell();
   },
   activateNewCell: function() {
-    if (!store.activateNewCell())
-      return this.winGame();
+    if (!gameData.activateNewCell())
+      return this.nextLevel();
   },
   onCellTapped: function(cell) {
     this.props.incrementScore();
-    if (store.checkWon())
-      return this.winGame();
-    store.switchCellTo(cell, CELL_WAIT);
+    if (gameData.checkGridComplete())
+      return this.nextLevel();
+    gameData.switchCellTo(cell, CELL_WAIT);
   },
   onCellTimeout: function(cell) {
     if (cell.type === CELL_TAP) {
-      store.switchCellTo(cell, CELL_DEAD);
+      gameData.switchCellTo(cell, CELL_DEAD);
       this.gameOver(cell);
     } else {
-      store.switchCellTo(cell, CELL_TAP);
+      gameData.switchCellTo(cell, CELL_TAP);
     }
   },
   gameOver: function(failedCell) {
     clearInterval(this._addCellTimer);
-    store.freezeCells();
+    gameData.freezeCells();
     this.props.gameOver();
   },
-  winGame: function() {
+  nextLevel: function() {
     clearInterval(this._addCellTimer);
-    store.freezeCells();
-    this.props.winGame();
+    gameData.freezeCells();
+    this.props.nextLevel();
   },
   _getCellComponent: function(cell, key) {
-    var cellSize = Math.floor(getAvailableWindowSize() / Math.sqrt(this.props.numberOfCells));
+    var cellSize = Math.floor(getAvailableWindowSize() / Math.sqrt(this._getNumberOfCells()));
     switch(cell.type) {
       case CELL_WAIT: {
         return WaitCell({
@@ -296,15 +309,36 @@ var Grid = React.createClass({displayName: 'Grid',
 });
 
 var Game = React.createClass({displayName: 'Game',
+  getDefaultProps: function() {
+    return {level: 1};
+  },
   getInitialState: function() {
     return {
       gameState: "init",
+      level: this.props.level,
       score: 0,
       best: localStorage["swwwitch.best"] || 0
     };
   },
   startGame: function() {
-    this.setState({gameState: "ongoing", score: 0});
+    this.setState({
+      gameState: "ongoing",
+      level: 1,
+      score: 0
+    });
+  },
+  startNextLevel: function() {
+    var nextLevel = this.state.level + 1;
+    if (nextLevel > MAX_LEVEL) {
+      return this.winGame();
+    }
+    this.setState({
+      gameState: "ongoing",
+      level: nextLevel
+    });
+  },
+  nextLevel: function() {
+    this.setState({gameState: "levelup"});
   },
   incrementScore: function() {
     var newScore = this.state.score + 1;
@@ -335,6 +369,15 @@ var Game = React.createClass({displayName: 'Game',
           )
         );
       }
+      case "levelup": {
+        return (
+          Overlay({title: "Level " + this.state.level + " completed!", 
+                   buttonLabel: "Start next level", 
+                   onButtonClick: this.startNextLevel}, 
+            React.DOM.p(null, "Get ready!")
+          )
+        );
+      }
       case "over":
       case "win": {
         return Overlay({
@@ -350,11 +393,11 @@ var Game = React.createClass({displayName: 'Game',
     return (
       React.DOM.div({className: "game"}, 
         React.DOM.h1(null, "Swwwitch"), 
-        React.DOM.h2(null, "Score: ", this.state.score, " — Best: ", this.state.best), 
-        Grid({numberOfCells: 64, 
+        React.DOM.h2(null, "Level: ", this.state.level, " — Score: ", this.state.score, " — Best: ", this.state.best), 
+        Grid({level: this.state.level, 
               incrementScore: this.incrementScore, 
               gameState: this.state.gameState, 
-              winGame: this.winGame, 
+              nextLevel: this.nextLevel, 
               gameOver: this.gameOver}), 
         this._renderOverlay()
       )
