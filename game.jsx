@@ -202,6 +202,10 @@ var TapCell = React.createClass({
 });
 
 var Overlay = React.createClass({
+  clickFullscren: function(event) {
+    event.preventDefault();
+    toggleFullScreen();
+  },
   render: function() {
     return (
       <div className="overlay">
@@ -209,6 +213,9 @@ var Overlay = React.createClass({
         {this.props.children}
         <StartButton label={this.props.buttonLabel}
                      onClick={this.props.onButtonClick} />
+        <p>
+          <a href="#" onClick={this.clickFullscren}>Toogle fullscreen</a>
+        </p>
       </div>
     );
   }
@@ -428,7 +435,4 @@ var Game = React.createClass({
   }
 });
 
-window.addEventListener("DOMLOaded", function() {
-  toggleFullScreen();
-  React.renderComponent(<Game />, document.body);
-});
+React.renderComponent(<Game />, document.querySelector("#game"));
